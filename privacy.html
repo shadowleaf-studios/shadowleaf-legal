@@ -9,9 +9,33 @@
          font: 17px/1.6 Georgia, serif; color: #1e2a23; background: #faf9f6; }
   h1 { font-size: 1.5rem; } h2 { font-size: 1.1rem; margin-top: 2rem; }
   .meta { color: #5a6b60; font-size: 0.9rem; }
+  /* OAuth handoff panel — hidden unless Pinterest redirects here with ?code= or ?error= */
+  #oauth-panel { display: none; margin: 0 0 2.5rem; padding: 1.25rem 1.5rem;
+                 border: 1px solid #b08d3f; background: #ffffff; border-radius: 6px; }
+  #oauth-panel h2 { margin-top: 0; }
+  #oauth-code { font: 15px/1.4 ui-monospace, Menlo, Consolas, monospace; width: 100%;
+                padding: 0.6rem; box-sizing: border-box; border: 1px solid #cdbf9a;
+                background: #faf9f6; color: #1e2a23; }
+  #oauth-copy { margin-top: 0.75rem; padding: 0.55rem 1.1rem; cursor: pointer; font: inherit;
+                letter-spacing: 0.03em; border: 1px solid #b08d3f; background: #b08d3f; color: #1e2a23; }
+  #oauth-copy:hover { opacity: 0.9; }
+  #oauth-hint { color: #5a6b60; font-size: 0.9rem; margin-top: 0.75rem; }
+  #oauth-error { color: #8a2b2b; }
 </style>
 </head>
 <body>
+
+<div id="oauth-panel" role="status">
+  <h2>Pinterest authorization code</h2>
+  <p id="oauth-error" hidden></p>
+  <p id="oauth-have">Authorization succeeded. Copy this code and paste it into the
+     Shadowleaf Pinterest setup script (the <code>--code</code> value):</p>
+  <input id="oauth-code" readonly aria-label="Pinterest authorization code">
+  <div><button id="oauth-copy" type="button">Copy code</button></div>
+  <p id="oauth-hint">You can also paste this page's full address — the setup script
+     accepts either. The code is read only in your browser and is never sent anywhere.</p>
+</div>
+
 <h1>Privacy Policy — Shadowleaf Prints Scheduler</h1>
 <p class="meta">Shadowleaf Prints · Effective 11 June 2026</p>
 
@@ -46,5 +70,40 @@ never transmitted to any server we operate or to any third party.</p>
 <h2>Changes and contact</h2>
 <p>If this policy changes, the updated version will be posted at this address.
 Questions: <a href="mailto:zacharykitcher@gmail.com">zacharykitcher@gmail.com</a>.</p>
+
+<script>
+// Surfaces the Pinterest OAuth ?code= so the studio owner can copy it from this page
+// instead of the address bar. Pure client-side; the code is never transmitted or stored.
+(function () {
+  var params = new URLSearchParams(window.location.search);
+  var code = params.get("code");
+  var err = params.get("error");
+  var errDesc = params.get("error_description");
+  if (!code && !err) return;                       // ordinary visit: stay a plain privacy policy
+  document.getElementById("oauth-panel").style.display = "block";
+  if (err) {
+    ["oauth-have", "oauth-code", "oauth-copy", "oauth-hint"].forEach(function (id) {
+      var el = document.getElementById(id); if (el) el.hidden = true;
+    });
+    var e = document.getElementById("oauth-error");
+    e.hidden = false;
+    e.textContent = "Pinterest returned an error: " + err +
+      (errDesc ? " — " + errDesc : "") + ". Re-run the authorize step.";
+    return;
+  }
+  var input = document.getElementById("oauth-code");
+  input.value = code;                              // .value, not innerHTML — no injection
+  var btn = document.getElementById("oauth-copy");
+  btn.addEventListener("click", function () {
+    input.focus(); input.select(); input.setSelectionRange(0, 99999);
+    var mark = function () { btn.textContent = "Copied ✓"; };
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(code).then(mark, function () {
+        try { document.execCommand("copy"); } catch (x) {} mark();
+      });
+    } else { try { document.execCommand("copy"); } catch (x) {} mark(); }
+  });
+})();
+</script>
 </body>
 </html>
